@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Speed Racer - Offline Car Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #0c0c0c, #1a1a2e, #16213e);
+            color: white;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        /* Main Menu */
+        .menu {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at center, #2a2a4a 0%, #1a1a2e 70%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            transition: opacity 0.5s ease;
+        }
+
+        .menu.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .title {
+            font-size: 4rem;
+            font-weight: bold;
+            text-shadow: 0 0 20px #ff6b35;
+            margin-bottom: 2rem;
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes glow {
+            from { text-shadow: 0 0 20px #ff6b35; }
+            to { text-shadow: 0 0 30px #ff6b35, 0 0 40px #ff6b35; }
+        }
+
+        .options {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            max-width: 400px;
+            width: 90%;
+        }
+
+        .option-btn {
+            background: linear-gradient(45deg, #ff6b35, #f7931e);
+            border: none;
+            padding: 1.2rem 2rem;
+            font-size: 1.3rem;
+            font-weight: bold;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 25px rgba(255, 107, 53, 0.4);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .option-btn:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(255, 107, 53, 0.6);
+        }
+
+        .option-btn:active {
+            transform: translateY(-2px);
+        }
+
+        .car-selector {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+        }
+
+        .car-option {
+            width: 80px;
+            height: 50px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            border: 3px solid transparent;
+        }
+
+        .car-option:hover {
+            transform: scale(1.1);
+            border-color: #ff6b35;
+        }
+
+        .car-option.selected {
+            border-color: #00ff88;
+            box-shadow: 0 0 20px #00ff88;
+        }
+
+        .car1 { background: linear-gradient(90deg, #ff4444, #ff6666); }
+        .car2 { background: linear-gradient(90deg, #4444ff, #6666ff); }
+        .car3 { background: linear-gradient(90deg, #44ff44, #66ff66); }
+
+        /* Game Canvas */
+        .game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: none;
+        }
+
+        .game-container.active {
+            display: block;
+        }
+
+        canvas {
+            display: block;
+            background: linear-gradient(to bottom, #87CEEB 0%, #98D8C8 70%, #228B22 100%);
+        }
+
+        /* UI Overlay */
+        .ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+            font-size: 1.5rem;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        }
+
+        .score {
+            color: #ffd700;
+            margin-bottom: 10px;
+        }
+
+        .speed {
+            color: #00ff88;
+        }
+
+        /* Game Over Screen */
+        .game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.9);
+            padding: 3rem;
+            border-radius: 20px;
+            text-align: center;
+            z-index: 200;
+            display: none;
+        }
+
+        .game-over.active {
+            display: block;
+        }
+
+        .final-score {
+            font-size: 3rem;
+            color: #ffd700;
+            margin: 1rem 0;
+            text-shadow: 0 0 20px #ffd700;
+        }
+
+        /* Controls */
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 1rem;
+            font-size: 1.2rem;
+            opacity: 0.8;
+        }
+
+        @media (max-width: 768px) {
+            .title { font-size: 2.5rem; }
+            .option-btn { font-size: 1.1rem; padding: 1rem; }
+            .car-option { width: 60px; height: 40px; }
+            .developer-credit {
+                font-size: 0.9rem;
+            }
+        }
+
+        /* Developer Credit */
+        .developer-credit {
+            position: fixed;
+            bottom: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-family: 'Arial', sans-serif;
+            font-size: 1rem;
+            color: #ffffff;
+            font-weight: 500;
+            text-align: center;
+            z-index: 999;
+            text-shadow: 
+                0 0 10px #ff6b35,
+                2px 2px 4px rgba(0,0,0,0.8);
+            animation: creditGlow 3s ease-in-out infinite alternate;
+            opacity: 0.9;
+            pointer-events: none;
+            max-width: 90%;
+        }
+
+        @keyframes creditGlow {
+            from { 
+                text-shadow: 
+                    0 0 10px #ff6b35,
+                    2px 2px 4px rgba(0,0,0,0.8);
+                opacity: 0.9;
+            }
+            to { 
+                text-shadow: 
+                    0 0 15px #ff6b35,
+                    0 0 20px #ff6b35,
+                    2px 2px 4px rgba(0,0,0,0.8);
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Main Menu -->
+    <div class="menu" id="mainMenu">
+        <div class="title">🚗 SPEED RACER 🚗</div>
+        <div class="options">
+            <button class="option-btn" onclick="startGame()">🏁 START RACE</button>
+            <div class="car-selector">
+                <div class="car-option car1 selected" data-car="1" onclick="selectCar(1)"></div>
+                <div class="car-option car2" data-car="2" onclick="selectCar(2)"></div>
+                <div class="car-option car3" data-car="3" onclick="selectCar(3)"></div>
+            </div>
+            <button class="option-btn" onclick="showControls()">⌨️ CONTROLS</button>
+            <button class="option-btn" onclick="showHighScores()">🏆 HIGH SCORES</button>
+        </div>
+    </div>
+
+    <!-- Game Container -->
+    <div class="game-container" id="gameContainer">
+        <div class="ui">
+            <div class="score">Score: <span id="score">0</span></div>
+            <div class="speed">Speed: <span id="speed">0</span> km/h</div>
+        </div>
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        <div class="controls">
+            ← → Arrow Keys or A/D to Move | SPACE to Boost
+        </div>
+    </div>
+
+    <!-- Game Over Screen -->
+    <div class="game-over" id="gameOver">
+        <h2>💥 CRASH! 💥</h2>
+        <div class="final-score" id="finalScore">0</div>
+        <p>Your Final Score: <span id="finalScoreText">0</span></p>
+        <button class="option-btn" onclick="restartGame()">🔄 PLAY AGAIN</button>
+        <button class="option-btn" onclick="returnToMenu()">🏠 MAIN MENU</button>
+    </div>
+
+    <script>
+        // Game Variables
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const mainMenu = document.getElementById('mainMenu');
+        const gameContainer = document.getElementById('gameContainer');
+        const gameOver = document.getElementById('gameOver');
+
+        let gameRunning = false;
+        let score = 0;
+        let speed = 0;
+        let carX = canvas.width / 2;
+        let carY = canvas.height - 100;
+        let carWidth = 50;
+        let carHeight = 80;
+        let selectedCar = 1;
+        let keys = {};
+        let roadLines = [];
+        let obstacles = [];
+        let particles = [];
+        let gameSpeed = 3;
+        let boostActive = false;
+
+        // Car colors
+        const carColors = [
+            '#ff4444', '#4444ff', '#44ff44'
+        ];
+
+        // Initialize road lines
+        function initRoadLines() {
+            roadLines = [];
+            for (let i = 0; i < 20; i++) {
+                roadLines.push({
+                    x: canvas.width / 2,
+                    y: i * 50,
+                    width: 8,
+                    height: 40
+                });
+            }
+        }
+
+        // Initialize obstacles
+        function initObstacles() {
+            obstacles = [];
+        }
+
+        // Select car
+        function selectCar(carNum) {
+            selectedCar = carNum;
+            document.querySelectorAll('.car-option').forEach(opt => opt.classList.remove('selected'));
+            event.target.classList.add('selected');
+        }
+
+        // Start game
+        function startGame() {
+            mainMenu.classList.add('hidden');
+            gameContainer.classList.add('active');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight * 0.9;
+            carX = canvas.width / 2;
+            carY = canvas.height - 120;
+            initRoadLines();
+            initObstacles();
+            score = 0;
+            speed = 0;
+            gameSpeed = 3;
+            gameRunning = true;
+            gameLoop();
+        }
+
+        // Show controls
+        function showControls() {
+            alert('🎮 CONTROLS:\n\n← → Arrow Keys or A/D: Move Left/Right\nSPACEBAR: Turbo Boost\n\n🏁 Avoid red cars and collect powerups!\n📈 Higher speed = More points!');
+        }
+
+        // Show high scores (local storage)
+        function showHighScores() {
+            const highScores = JSON.parse(localStorage.getItem('highScores') || '[]');
+            let message = '🏆 HIGH SCORES 🏆\n\n';
+            highScores.slice(0, 5).forEach((score, i) => {
+                message += `${i + 1}. ${score}\n`;
+            });
+            alert(message);
+        }
+
+        // Restart game
+        function restartGame() {
+            gameOver.classList.remove('active');
+            startGame();
+        }
+
+        // Return to menu
+        function returnToMenu() {
+            gameOver.classList.remove('active');
+            gameContainer.classList.remove('active');
+            mainMenu.classList.remove('hidden');
+            gameRunning = false;
+        }
+
+        // Update game state
+        function update() {
+            if (!gameRunning) return;
+
+            // Car movement
+            if (keys['ArrowLeft'] || keys['a'] || keys['A']) {
+                carX -= 5;
+            }
+            if (keys['ArrowRight'] || keys['d'] || keys['D']) {
+                carX += 5;
+            }
+            if (keys[' ']) {
+                boostActive = true;
+                gameSpeed = 6;
+            } else {
+                boostActive = false;
+                gameSpeed = 3 + Math.min(score / 1000, 4);
+            }
+
+            // Boundaries
+            carX = Math.max(carWidth / 2, Math.min(canvas.width - carWidth / 2, carX));
+
+            // Update road lines
+            roadLines.forEach(line => {
+                line.y += gameSpeed * 2;
+                if (line.y > canvas.height) {
+                    line.y = -line.height;
+                }
+            });
+
+            // Spawn obstacles
+            if (Math.random() < 0.02 + score / 100000) {
+                obstacles.push({
+                    x: Math.random() * (canvas.width - 60) + 30,
+                    y: -60,
+                    width: 50,
+                    height: 80,
+                    speed: gameSpeed * 1.5
+                });
+            }
+
+            // Update obstacles
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                const obs = obstacles[i];
+                obs.y += obs.speed;
+                
+                // Collision detection
+                if (carX < obs.x + obs.width &&
+                    carX + carWidth > obs.x &&
+                    carY < obs.y + obs.height &&
+                    carY + carHeight > obs.y) {
+                    gameOverScreen();
+                    return;
+                }
+
+                // Remove off-screen obstacles
+                if (obs.y > canvas.height) {
+                    obstacles.splice(i, 1);
+                    score += 10;
+                }
+            }
+
+            // Update score and speed
+            score += Math.floor(gameSpeed);
+            speed = Math.floor(gameSpeed * 20);
+            document.getElementById('score').textContent = score;
+            document.getElementById('speed').textContent = speed;
+
+            // Save high score
+            const highScores = JSON.parse(localStorage.getItem('highScores') || '[]');
+            if (score > (highScores[0] || 0)) {
+                highScores.unshift(score);
+                highScores.splice(5);
+                localStorage.setItem('highScores', JSON.stringify(highScores));
+            }
+        }
+
+        // Render game
+        function render() {
+            // Clear canvas
+            ctx.fillStyle = '#87CEEB';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw road
+            ctx.fillStyle = '#333';
+            ctx.fillRect(canvas.width * 0.2, 0, canvas.width * 0.6, canvas.height);
+
+            // Draw road lines
+            ctx.fillStyle = 'white';
+            roadLines.forEach(line => {
+                ctx.fillRect(line.x - line.width / 2, line.y, line.width, line.height);
+            });
+
+            // Draw road edges
+            ctx.fillStyle = '#666';
+            ctx.fillRect(canvas.width * 0.2, 0, 20, canvas.height);
+            ctx.fillRect(canvas.width * 0.8 - 20, 0, 20, canvas.height);
+
+            // Draw car
+            ctx.save();
+            ctx.translate(carX, carY);
+            
+            // Car body
+            ctx.fillStyle = boostActive ? '#ffd700' : carColors[selectedCar - 1];
+            ctx.fillRect(-carWidth/2, -carHeight/2, carWidth, carHeight);
+            
+            // Car details
+            ctx.fillStyle = '#222';
+            ctx.fillRect(-carWidth/2 + 5, -carHeight/2 + 10, carWidth - 10, 20);
+            ctx.fillRect(-carWidth/2 + 5, carHeight/2 - 30, carWidth - 10, 20);
+            
+            // Wheels
+            ctx.fillStyle = '#111';
+            ctx.fillRect(-carWidth/2 + 5, -carHeight/2 + 5, 15, 12);
+            ctx.fillRect(-carWidth/2 + 30, -carHeight/2 + 5, 15, 12);
+            ctx.fillRect(-carWidth/2 + 5, carHeight/2 - 17, 15, 12);
+            ctx.fillRect(-carWidth/2 + 30, carHeight/2 - 17, 15, 12);
+            
+            // Boost effect
+            if (boostActive) {
+                ctx.fillStyle = 'rgba(255, 255, 0, 0.6)';
+                ctx.fillRect(-carWidth/2 - 10, 0, 20, 30);
+            }
+            
+            ctx.restore();
+
+            // Draw obstacles
+            obstacles.forEach(obs => {
+                ctx.fillStyle = '#ff4444';
+                ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+                
+                // Obstacle details
+                ctx.fillStyle = '#cc3333';
+                ctx.fillRect(obs.x + 5, obs.y + 10, obs.width - 10, 20);
+                ctx.fillRect(obs.x + 5, obs.y + obs.height - 30, obs.width - 10, 20);
+            });
+        }
+
+        // Game over
+        function gameOverScreen() {
+            gameRunning = false;
+            document.getElementById('finalScore').textContent = score;
+            document.getElementById('finalScoreText').textContent = score;
+            gameOver.classList.add('active');
+        }
+
+        // Game loop
+        function gameLoop() {
+            update();
+            render();
+            if (gameRunning) {
+                requestAnimationFrame(gameLoop);
+            }
+        }
+
+        // Event listeners
+        window.addEventListener('keydown', (e) => {
+            keys[e.key] = true;
+            if (e.key === ' ') e.preventDefault();
+        });
+
+        window.addEventListener('keyup', (e) => {
+            keys[e.key] = false;
+        });
+
+        // Responsive canvas
+        window.addEventListener('resize', () => {
+            if (gameRunning) {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight * 0.9;
+            }
+        });
+
+        // Prevent context menu on canvas
+        canvas.addEventListener('contextmenu', e => e.preventDefault());
+    </script>
+
+    <!-- Developer Credit -->
+    <div class="developer-credit">Developer Saifullah Shaikh</div>
+</body>
+</html>
